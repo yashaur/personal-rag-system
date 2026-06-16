@@ -3,4 +3,10 @@ CLAUDE.md
 .venv
 data/
 .pyc
+<<<<<<< Updated upstream
 .claude
+=======
+*.pyc
+/app/__pycache__
+/app/__pycache__
+>>>>>>> Stashed changes

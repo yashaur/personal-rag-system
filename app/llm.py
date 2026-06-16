@@ -22,4 +22,6 @@ if __name__ == '__main__':
     print(vec)
     print(f'vector length: {len(vec)}')
 
-    print(llm.invoke("Hi, how are you").content)
+    response = llm.invoke("Hi, how are you")
+
+    print(response)

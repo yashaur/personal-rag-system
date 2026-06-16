@@ -54,7 +54,7 @@ def load_document(path: str) -> list[Document]:
         return docs    
 
 if __name__ == '__main__':
-    path = './data/uploads/test.pdf'
+    path = './data/uploads/test.txt'
     docs = load_document(path)
     print(docs)
     print(len(docs))

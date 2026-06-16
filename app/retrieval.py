@@ -24,7 +24,7 @@ _reranker = CrossEncoderReranker(
 
 def _all_docs_from_chroma() -> list[Document]:
     data = vectorstore.get(include = ['documents', 'metadatas'])
-    return [Document(page_content = t, metadata = m) for t,m in zip(data['documents'], data['metadatas'])]
+    return [Document(page_content = t, metadata = m) for t, m in zip(data['documents'], data['metadatas'])]
 
 def _build_retriever() -> ContextualCompressionRetriever | None:
     docs = _all_docs_from_chroma()
@@ -61,10 +61,9 @@ if __name__ == '__main__':
 
     path = settings.uploads_dir + '/test.pdf'
 
-    docs = ingest_file(path)
-
     vectorstore.reset_collection()
-    vectorstore.add_documents(docs)
+
+    docs = ingest_file(path)
 
     refresh()
 
