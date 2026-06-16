@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = PROJECT_ROOT / ".env"
 
 class Settings(BaseSettings):
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
 
     # --- Chroma vector store ---
-    chroma_dir: str = './data/chroma' 
+    chroma_dir: str = str(PROJECT_ROOT / 'data' / 'chroma')
     collection_name: str = "personal_rag"
 
     # --- Chunking (RecursiveCharacterTextSplitter) ---
@@ -35,8 +35,7 @@ class Settings(BaseSettings):
     reranker_model: str = "BAAI/bge-reranker-base"
 
     # --- Local data directories ---
-    bm25_dir: str = "./data/bm25"
-    uploads_dir: str = "./data/uploads"
+    uploads_dir: str = str(PROJECT_ROOT / 'data' / 'uploads')
 
 
 # Import this singleton everywhere settings are needed.

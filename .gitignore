@@ -1,2 +1,6 @@
-.md
+ARCHITECTURE.md
+CLAUDE.md
+.venv
+data/
+.pyc
 .claude
