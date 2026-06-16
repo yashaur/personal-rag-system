@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p backend/app frontend/pages data/chroma data/bm25 data/uploads)",
+      "Bash(touch backend/app/__init__.py backend/app/main.py backend/app/config.py backend/app/llm.py backend/app/loaders.py backend/app/ingestion.py backend/app/vectorstore.py backend/app/retrieval.py backend/app/prompts.py backend/app/chains.py backend/app/schemas.py backend/app/api.py backend/.env.example frontend/app.py frontend/api_client.py frontend/pages/1_chat.py frontend/pages/2_documents.py README.md .gitignore data/chroma/.gitkeep data/bm25/.gitkeep data/uploads/.gitkeep)",
+      "Bash(grep -v '^\\\\.$')"
+    ]
+  }
+}

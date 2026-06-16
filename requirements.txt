@@ -1,0 +1,28 @@
+# Orchestration (LCEL)
+langchain
+langchain-community
+langchain-ollama
+langchain-chroma
+
+# Vector store
+chromadb
+
+# Backend
+fastapi
+uvicorn
+
+# Frontend
+streamlit
+httpx
+
+# Document loading
+pymupdf
+
+# Keyword search + fusion
+rank-bm25
+
+# Reranker (backs HuggingFaceCrossEncoder)
+sentence-transformers
+
+# Config
+pydantic-settings
