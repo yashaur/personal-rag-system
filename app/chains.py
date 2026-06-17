@@ -119,6 +119,8 @@ if __name__ == '__main__':
         for k in response:
             print(f'{k.title()}:\n{response[k]}\n')
 
+        print(type(response['sources'][0]))
+
     else:
         chat_history = []
         while True:
