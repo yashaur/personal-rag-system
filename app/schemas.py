@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, List, Dict
+from typing import Literal, List
 
 
 class ChatMessage(BaseModel):
@@ -9,6 +9,7 @@ class ChatMessage(BaseModel):
 class QueryRequest(BaseModel):
     question: str = Field(..., description = 'The query asked by the user')
     chat_history: List[ChatMessage] = Field(default = [], description = 'The chat history between the user and assistant so far')
+    mode: Literal['single', 'multi'] = Field(default = 'single', description = 'The mode of conversation: can either be single (just one question asked and the chat ends) or multi-turn (user asks multiple questions in sequence)')
 
 class SourceDocument(BaseModel):
     content: str = Field(..., description = "The content retrieved from a source document's chunk")
@@ -24,7 +25,9 @@ class IngestResponse(BaseModel):
     chunk_count: int = Field(..., description = 'The number of chunks that were processed out of the file')
 
 class DocumentInfo(IngestResponse):
-    pass
+    filename: str = Field(..., description = 'The filename with extension of the file that was ingested into the Chroma database') 
+    chunk_count: int = Field(..., description = 'The number of chunks that were processed out of the file')
+
 
 if __name__ == '__main__':
     from pydantic import ValidationError
