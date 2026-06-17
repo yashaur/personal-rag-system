@@ -7,7 +7,22 @@ from app.llm import llm
 from app.prompts import rag_prompt, condenser_prompt
 import app.retrieval as retrieval
 
+from time import perf_counter
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
+
 parser = StrOutputParser()
+
+def add_timer(original_chain, chain_name: str):
+    def timed(chain_input):
+        start = perf_counter()
+        result = original_chain.invoke(chain_input)
+        elapsed = perf_counter() - start
+        logger.info("%s: %.3fs", chain_name + ' chain', elapsed)
+        return result
+    return RunnableLambda(timed)
 
 def format_chunks(chunks: list[Document]) -> str:
     blocks = []
@@ -30,26 +45,30 @@ def remove_asterisk(text: str) -> str:
 
 format_output = RunnableLambda(remove_asterisk)
 
-chunks_chain = RunnablePassthrough.assign(
-                    chunks = lambda x: retrieval.retriever.invoke(x['question'])
+retrieval_chain = RunnablePassthrough.assign(
+                    retrieved_chunks = lambda x: retrieval.retriever.invoke(x['question'])
                                         )
+
+timed_retrieval_chain = add_timer(retrieval_chain, 'Retrieval + reranking')
 
 context_dict = {
                     'question': lambda d: d['question'],
-                    'context': lambda d: format_chunks(d['chunks'])
+                    'context': lambda d: format_chunks(d['retrieved_chunks'])
                                 }
 
 generation_chain = rag_prompt | llm | parser | format_output
 
+timed_generation_chain = add_timer(generation_chain, 'LLM generation')
+
 answer_chain = RunnablePassthrough.assign(
-                    answer = context_dict | generation_chain
+                    answer = context_dict | timed_generation_chain
                                         )
 
 final_output_chain = RunnableLambda(
-                        lambda d: {'answer': d['answer'], 'sources': d['chunks']}
+                        lambda d: {'answer': d['answer'], 'sources': d['retrieved_chunks']}
 )
 
-single_turn_chain = chunks_chain | answer_chain | final_output_chain
+single_turn_chain = timed_retrieval_chain | answer_chain | final_output_chain
 
 
 ### MULTI-TURN CHAIN ###
@@ -71,13 +90,15 @@ def to_messages(chat_history: list[dict]) -> list:
 
 condense_chain = condenser_prompt | llm | parser
 
+timed_condense_chain = add_timer(condense_chain, 'Condenser')
+
 def standalone_question(query: dict) -> str:
     history = query.get('chat_history')
 
     if not history:
         return query['question']
     
-    return condense_chain.invoke({
+    return timed_condense_chain.invoke({
             'question': query['question'],
             'chat_history': to_messages(history)
                                 })
