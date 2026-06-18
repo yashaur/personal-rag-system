@@ -45,8 +45,10 @@ Two conveniences worth burning into memory, because the sketches below rely on t
 
 Why LCEL at all (and why the golden rule bans `LLMChain`/`ConversationalRetrievalChain`)?
 Because composing runnables gives you streaming, batching, and async for free, and the
-data flow is explicit and inspectable — no hidden chain magic. We won't use streaming in
-v1, but the composition style is the foundation everything else sits on.
+data flow is explicit and inspectable — no hidden chain magic. Streaming lands as the
+project's final feature (see `streaming.md`) and leans on exactly this: the answer streams
+by `.stream()`-ing a purpose-built `rag_prompt | llm | parser` core — the composition style
+is what makes that a small addition rather than a rewrite.
 
 ---
 

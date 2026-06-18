@@ -2,6 +2,7 @@ import streamlit as st
 import httpx
 
 import api_client
+import json
 
 st.set_page_config(page_title="Chat", page_icon="💬")
 
@@ -11,10 +12,20 @@ st.title("💬 Chat")
 multi_turn = st.sidebar.toggle(
     "Multi-turn",
     value=True,
-    help="When on, follow-up questions are interpreted in the context of the conversation "
+    help="When turned on, follow-up questions are interpreted in the context of the conversation "
          "(the backend condenses them into a standalone question before retrieving).",
 )
+
 mode = "multi" if multi_turn else "single"
+
+stream_answer = st.sidebar.toggle(
+    "Stream LLM response",
+    value = True,
+    help = "When turned on, the interface streams each work(token) as it is produced instead of "
+           "outputting the entire answer at once."
+)
+
+stream_mode = "stream" if stream_answer else "once"
 
 if st.sidebar.button("Clear conversation"):
     st.session_state.messages = []
@@ -58,17 +69,29 @@ if prompt := st.chat_input("Ask a question about your documents"):
     ]
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking…"):
-            try:
-                response = api_client.query(prompt, history, mode)
-                answer = response["answer"]
-                sources = response.get("sources", [])
-            except httpx.HTTPError as e:
-                answer = f"⚠️ Could not get an answer: {e}"
-                sources = []
-        st.markdown(answer)
-        render_sources(sources)
+        try:    
+            if stream_mode == 'stream':
+                with st.spinner('Thinking...'):
+                    token_generator = api_client.query_stream(prompt, history, mode)
+                    sources = next(token_generator)['sources']
 
+                token_adaptor = (frame['token'] for frame in token_generator if frame['type'] == 'token')
+                answer = st.write_stream(token_adaptor)
+
+                render_sources(sources)
+
+            else:
+                with st.spinner('Thinking...'):
+                    response = api_client.query(prompt, history, mode)
+                    answer = response["answer"]
+                    sources = response.get("sources", [])
+                    st.markdown(answer)
+                    render_sources(sources)
+
+        except httpx.HTTPError as e:
+            answer = f"⚠️ Could not get an answer: {e}"
+            sources = []
+    
     st.session_state.messages.append(
         {"role": "assistant", "content": answer, "sources": sources}
-    )
+        )
