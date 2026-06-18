@@ -149,6 +149,9 @@ def stream_answer_question(question: str, chat_history: list[dict] | None = None
 
     prompt = prompt_chain.invoke(retrieval_dict)
 
+    print("Chat history so far:\n", chat_history)
+    print("Prompt being sent to LLM:\n", prompt)
+
     return sources, stream_generation_chain.stream(prompt)
 
 
