@@ -10,6 +10,8 @@ import app.retrieval as retrieval
 from time import perf_counter
 import logging
 
+from collections.abc import Iterator
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 
@@ -40,10 +42,10 @@ def format_chunks(chunks: list[Document]) -> str:
 
 ### SINGLE-TURN CHAIN ###
 
-def remove_asterisk(text: str) -> str:
-    return text.replace('**', '')
+# def remove_asterisk(text: str) -> str:
+#     return text.replace('**', '')
 
-format_output = RunnableLambda(remove_asterisk)
+# format_output = RunnableLambda(remove_asterisk)
 
 retrieval_chain = RunnablePassthrough.assign(
                     retrieved_chunks = lambda x: retrieval.retriever.invoke(x['question'])
@@ -56,7 +58,7 @@ context_dict = {
                     'context': lambda d: format_chunks(d['retrieved_chunks'])
                                 }
 
-generation_chain = rag_prompt | llm | parser | format_output
+generation_chain = rag_prompt | llm | parser
 
 timed_generation_chain = add_timer(generation_chain, 'LLM generation')
 
@@ -120,6 +122,34 @@ def answer_question(question: str, chat_history: list[dict] | None = None) -> di
                                 'question': question,
                                 'chat_history': chat_history or []
     })
+
+
+### STREAMING CHAIN ###
+
+stream_generation_chain = llm | parser
+
+def stream_answer_question(question: str, chat_history: list[dict] | None = None) -> tuple[list[Document], Iterator[str]]:
+
+    if retrieval.retriever is None:
+        return (
+                [], # empty sources list for the API because nothing was ingested
+                iter(['No documents have been ingested yet!']) # Trying to keep the return object of this function consistent as a tuple of list of sources and an iterator
+        )
+
+    condense_retrieval_chain = standalone_chain | timed_retrieval_chain
+
+    retrieval_dict = condense_retrieval_chain.invoke({
+                                                'question': question,
+                                                'chat_history': chat_history or []
+                                                    })
+    
+    sources = retrieval_dict['retrieved_chunks']
+
+    prompt_chain = context_dict | rag_prompt
+
+    prompt = prompt_chain.invoke(retrieval_dict)
+
+    return sources, stream_generation_chain.stream(prompt)
 
 
 if __name__ == '__main__':

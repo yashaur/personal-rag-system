@@ -14,3 +14,10 @@ multi_turn_messages = [
 ]
 
 condenser_prompt = ChatPromptTemplate.from_messages(multi_turn_messages)
+
+
+if __name__ == '__main__':
+    # for message in (condenser_prompt.messages):
+    #     print('\n', message, '\n')
+
+    print(rag_prompt.invoke({'question': 'Hi', 'context': 'no context'}))

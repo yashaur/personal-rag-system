@@ -1,6 +1,8 @@
 import os
 import httpx
 from typing import Literal
+import json
+from collections.abc import Iterator
 
 BASE_URL = os.getenv('RAG_API_URL', 'http://localhost:8000')
 
@@ -22,3 +24,16 @@ def list_documents() -> list[dict]:
     response = client.get('/documents')
     response.raise_for_status()
     return response.json()
+
+def query_stream(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single') -> Iterator[dict]:
+    
+    request_body = dict(
+                        question = question,
+                        chat_history = chat_history,
+                        mode = mode
+    )
+    
+    with client.stream('POST', '/query/stream', json = request_body) as response:
+        response.raise_for_status()
+        for frame in response.iter_lines():
+            yield json.loads(frame)
