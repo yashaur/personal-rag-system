@@ -30,7 +30,8 @@ class DeleteResponse(BaseModel):
     filename_or_all: str | None = Field(default = None, description = 'Field specifying the filename of the file deleted, or simply "ALL", specifying deletion of the entire database. "None" if the file could not be deleted.')
 
 class DocumentInfo(IngestResponse):
-    filename: str = Field(..., description = 'The filename with extension of the file that was ingested into the Chroma database') 
+    filename: str = Field(..., description = 'The filename with extension of the file that was ingested into the Chroma database')
+    page_count: int = Field(..., description = 'The number of pages of the document. 1 in case of a .txt file')
     chunk_count: int = Field(..., description = 'The number of chunks that were processed out of the file')
 
 
