@@ -15,9 +15,6 @@ def ingest(uploaded_file) -> dict:
     return response.json()
 
 def delete_single_file(filename: str) -> dict:
-    # The endpoint is `filename: str = Body(...)`, which FastAPI parses as a BARE JSON
-    # string body (i.e. "Week 1.pdf", not {"filename": "..."}). httpx's .delete() can't
-    # carry a body, so send it via .request() with the raw string as json.
     response = client.request('DELETE', '/delete_single_file', json = filename)
     response.raise_for_status()
     return response.json()
