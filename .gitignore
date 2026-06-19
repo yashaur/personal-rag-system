@@ -13,3 +13,4 @@ data/
 .DS_Store
 *.pyc
 /guides
+data/chroma/chroma.sqlite3
