@@ -71,7 +71,7 @@ def query(query_request: QueryRequest = Body(...)):
 @router.get('/documents', response_model = list[DocumentInfo])
 def retrieve_docs():
     doc_list = retrieve_doc_list()
-    return [DocumentInfo(filename = fname, chunk_count = doc_list[fname]['chunks']) for fname in doc_list]
+    return [DocumentInfo(filename = fname, page_count = doc_list[fname]['pages'], chunk_count = doc_list[fname]['chunks']) for fname in doc_list]
 
 
 @router.post('/query/stream')
