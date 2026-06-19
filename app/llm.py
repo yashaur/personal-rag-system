@@ -1,13 +1,20 @@
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from app.config import settings
 
-MODEL = settings.ollama_llm_model
+CHAT_MODEL = settings.ollama_llm_model
+CONDENSER_MODEL = settings.ollama_condenser_model
 BASE_URL = settings.ollama_base_url
 EMBED_MODEL = settings.ollama_embed_model
 TEMPERATURE = settings.llm_temperature
 
 llm = ChatOllama(
-                model = MODEL,
+                model = CHAT_MODEL,
+                base_url = BASE_URL,
+                temperature = TEMPERATURE
+)
+
+condenser_llm = ChatOllama(
+                model = CONDENSER_MODEL,
                 base_url = BASE_URL,
                 temperature = TEMPERATURE
 )

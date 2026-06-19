@@ -14,6 +14,17 @@ def ingest(uploaded_file) -> dict:
     response.raise_for_status()
     return response.json()
 
+def delete_single_file(filename) -> dict:
+    delete_json = dict(filename = filename)
+    response = client.delete('/delete_single_file', json = delete_json)
+    response.raise_for_status()
+    return response.json()
+
+def delete_all_files() -> dict:
+    response = client.delete('/delete_all_files')
+    response.raise_for_status()
+    return response.json()
+
 def query(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single') -> dict:
     query_json = {'question': question, 'mode': mode, 'chat_history': chat_history}
     response = client.post('/query', json = query_json)
@@ -24,7 +35,7 @@ def list_documents() -> list[dict]:
     response = client.get('/documents')
     response.raise_for_status()
     return response.json()
-
+    
 def query_stream(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single') -> Iterator[dict]:
     
     request_body = dict(

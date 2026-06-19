@@ -57,7 +57,7 @@ def refresh() -> None:
 
 if __name__ == '__main__':
 
-    from app.ingestion import ingest_file
+    from app.ingestion_deletion import ingest_file
 
     path = settings.uploads_dir + '/test.pdf'
 

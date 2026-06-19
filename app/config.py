@@ -13,7 +13,8 @@ class Settings(BaseSettings):
 
     # --- Ollama (LLM + embeddings) ---
     ollama_base_url: str = "http://localhost:11434"
-    ollama_llm_model: str = "ministral-3:8b"
+    ollama_llm_model: str = "llama3.2:3b"
+    ollama_condenser_model: str = "ministral-3:8b"
     ollama_embed_model: str = "nomic-embed-text"
     llm_temperature: float = 0.0
 
