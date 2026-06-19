@@ -3,7 +3,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
 
-from app.llm import llm
+from app.llm import llm, condenser_llm
 from app.prompts import rag_prompt, condenser_prompt
 import app.retrieval as retrieval
 
@@ -90,7 +90,7 @@ def to_messages(chat_history: list[dict]) -> list:
     
     return messages
 
-condense_chain = condenser_prompt | llm | parser
+condense_chain = condenser_prompt | condenser_llm | parser
 
 timed_condense_chain = add_timer(condense_chain, 'Condenser')
 
@@ -100,10 +100,14 @@ def standalone_question(query: dict) -> str:
     if not history:
         return query['question']
     
-    return timed_condense_chain.invoke({
+    history = history[-6:]
+    
+    rewritten =  timed_condense_chain.invoke({
             'question': query['question'],
             'chat_history': to_messages(history)
-                                })
+                                }).strip()
+    
+    return rewritten or query['question']
 
 standalone_chain = RunnablePassthrough.assign(
                                             question = RunnableLambda(standalone_question)
@@ -157,32 +161,39 @@ def stream_answer_question(question: str, chat_history: list[dict] | None = None
 
 if __name__ == '__main__':
 
-    from app.ingestion import ingest_file
-    from app.config import settings
+    # from app.ingestion import ingest_file
+    # from app.config import settings
 
-    retrieval.vectorstore.reset_collection()
-    path = settings.uploads_dir + '/test.pdf'
-    ingest_file(path)
-    retrieval.refresh()
+    # retrieval.vectorstore.reset_collection()
+    # path = settings.uploads_dir + '/test.pdf'
+    # ingest_file(path)
+    # retrieval.refresh()
 
-    multi_question = input("Do you want to turn on multi-turn questions? (Y/n): ")
+    # multi_question = input("Do you want to turn on multi-turn questions? (Y/n): ")
 
-    if multi_question != 'Y':
-        query = input("ask a question: ")
-        response = answer_question(query)
-        for k in response:
-            print(f'{k.title()}:\n{response[k]}\n')
+    # if multi_question != 'Y':
+    #     query = input("ask a question: ")
+    #     response = answer_question(query)
+    #     for k in response:
+    #         print(f'{k.title()}:\n{response[k]}\n')
 
-        print(type(response['sources'][0]))
+    #     print(type(response['sources'][0]))
 
-    else:
-        chat_history = []
-        while True:
-            query = input("ask a question (type 'exit' to end): ")
-            if query == 'exit':
-                break
-            response = answer_question(query, chat_history)['answer']
-            print(f'assistant: {response}')
+    # else:
+    #     chat_history = []
+    #     while True:
+    #         query = input("ask a question (type 'exit' to end): ")
+    #         if query == 'exit':
+    #             break
+    #         response = answer_question(query, chat_history)['answer']
+    #         print(f'assistant: {response}')
 
-            chat_history.append({'role': 'user', 'content': query})
-            chat_history.append({'role': 'assistant', 'content': response})
+    #         chat_history.append({'role': 'user', 'content': query})
+    #         chat_history.append({'role': 'assistant', 'content': response})
+
+    
+    hist = [
+    {'role': 'user', 'content': 'What is GDP'},
+    {'role': 'assistant', 'content': 'GDP is a measure of aggregate output...'},
+    ]
+    print(standalone_question({'question': 'how can i measure it', 'chat_history': hist}))

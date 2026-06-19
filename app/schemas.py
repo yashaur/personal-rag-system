@@ -24,6 +24,11 @@ class IngestResponse(BaseModel):
     filename: str = Field(..., description = 'The filename with extension of the file that was ingested into the Chroma database') 
     chunk_count: int = Field(..., description = 'The number of chunks that were processed out of the file')
 
+class DeleteResponse(BaseModel):
+    message: str = Field(..., description = 'Message explaining if the file was deleted or not, and the reason if not deleted.')
+    chunk_count: int = Field(..., description = 'The number of chunks that were deleted from the database. 0 chunks deleted indicates the delete operation was unsuccesful')
+    filename_or_all: str | None = Field(default = None, description = 'Field specifying the filename of the file deleted, or simply "ALL", specifying deletion of the entire database. "None" if the file could not be deleted.')
+
 class DocumentInfo(IngestResponse):
     filename: str = Field(..., description = 'The filename with extension of the file that was ingested into the Chroma database') 
     chunk_count: int = Field(..., description = 'The number of chunks that were processed out of the file')
@@ -98,7 +103,7 @@ if __name__ == '__main__':
 
 
     # Checking for IngestResponse with ingest_file()
-    from app.ingestion import ingest_file
+    from app.ingestion_deletion import ingest_file
     from app.config import settings
 
     path = settings.uploads_dir + '/test.pdf'

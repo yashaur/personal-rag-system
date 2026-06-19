@@ -91,7 +91,12 @@ if prompt := st.chat_input("Ask a question about your documents"):
         except httpx.HTTPError as e:
             answer = f"⚠️ Could not get an answer: {e}"
             sources = []
+
+        except Exception as e:
+            answer = f"⚠️ Could not get an answer: {e}"
+            sources = []
     
     st.session_state.messages.append(
         {"role": "assistant", "content": answer, "sources": sources}
         )
+    

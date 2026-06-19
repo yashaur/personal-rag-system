@@ -10,3 +10,6 @@ data/
 /app/__pycache__
 /app/__pycache__
 >>>>>>> Stashed changes
+.DS_Store
+*.pyc
+/guides

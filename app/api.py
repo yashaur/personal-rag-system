@@ -4,17 +4,17 @@ from app.schemas import (
                             QueryResponse,
                             SourceDocument,
                             IngestResponse,
-                            DocumentInfo
+                            DocumentInfo,
+                            DeleteResponse
                         )
-from app.ingestion import ingest_file
+from app.ingestion_deletion import ingest_file, delete_single_file, delete_all_files
 from app.chains import answer_question, stream_answer_question
-from app.vectorstore import vectorstore
+from app.vectorstore import retrieve_doc_list
 import app.retrieval as retrieval
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Body
 from fastapi.responses import StreamingResponse
 from pathlib import Path
-from collections import Counter
 import json
 
 router = APIRouter()
@@ -70,9 +70,8 @@ def query(query_request: QueryRequest = Body(...)):
 
 @router.get('/documents', response_model = list[DocumentInfo])
 def retrieve_docs():
-    filedata = vectorstore.get(include = ['metadatas'])
-    filedata_with_n_chunks = Counter(m['source'] for m in filedata['metadatas'])
-    return [DocumentInfo(filename=fname, chunk_count=filedata_with_n_chunks[fname]) for fname in filedata_with_n_chunks]
+    doc_list = retrieve_doc_list()
+    return [DocumentInfo(filename = fname, chunk_count = doc_list[fname]['chunks']) for fname in doc_list]
 
 
 @router.post('/query/stream')
@@ -110,3 +109,32 @@ def query_stream(query_request: QueryRequest = Body(...)):
         yield footer
 
     return StreamingResponse(token_generator(), media_type = 'application/x-ndjson')
+
+
+@router.delete('/delete_single_file', response_model = DeleteResponse)
+def delete_file(filename: str = Body(...)):
+
+    deletion_status = delete_single_file(filename = filename)
+    deleted, message, chunks_deleted = deletion_status['deleted'], deletion_status['message'], deletion_status['chunks_deleted']
+
+    if not deleted:
+        raise HTTPException(status_code = 400, detail = f"File '{filename}' doesn't exist. Try again.")
+
+    return DeleteResponse(
+                            message = message,
+                            chunk_count = chunks_deleted,
+                            filename_or_all = filename
+                         )
+
+
+@router.delete('/delete_all_files', response_model = DeleteResponse)
+def delete_all():
+
+    deletion_status = delete_all_files()
+    deleted, message, chunks_deleted = deletion_status['deleted'], deletion_status['message'], deletion_status['chunks_deleted']
+
+    return DeleteResponse(
+                            message = message,
+                            chunk_count = chunks_deleted,
+                            filename_or_all = 'ALL'
+                         )
