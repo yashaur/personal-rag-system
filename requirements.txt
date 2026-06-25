@@ -26,3 +26,9 @@ sentence-transformers
 
 # Config
 pydantic-settings
+
+# Langfuse for observability
+Langfuse >= 3
+
+# For generating session IDs
+uuid
