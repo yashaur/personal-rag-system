@@ -24,9 +24,16 @@ def delete_all_files() -> dict:
     response.raise_for_status()
     return response.json()
 
-def query(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single') -> dict:
-    query_json = {'question': question, 'mode': mode, 'chat_history': chat_history}
-    response = client.post('/query', json = query_json)
+def query(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single', session_id: str | None = None) -> dict:
+    
+    request_body = dict(
+                        question = question,
+                        chat_history = chat_history,
+                        mode = mode,
+                        session_id = session_id
+    )
+
+    response = client.post('/query', json = request_body)
     response.raise_for_status()
     return response.json()
 
@@ -35,12 +42,13 @@ def list_documents() -> list[dict]:
     response.raise_for_status()
     return response.json()
     
-def query_stream(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single') -> Iterator[dict]:
+def query_stream(question: str, chat_history: list | None = None, mode: Literal['single', 'multi'] = 'single', session_id: str | None = None) -> Iterator[dict]:
     
     request_body = dict(
                         question = question,
                         chat_history = chat_history,
-                        mode = mode
+                        mode = mode,
+                        session_id = session_id
     )
     
     with client.stream('POST', '/query/stream', json = request_body) as response:

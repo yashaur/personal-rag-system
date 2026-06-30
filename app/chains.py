@@ -3,28 +3,16 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
 
+from langfuse import get_client
+
 from app.llm import llm, condenser_llm
 from app.prompts import rag_prompt, condenser_prompt
 import app.retrieval as retrieval
-
-from time import perf_counter
-import logging
+from app.observability import get_langfuse_handler, OllamaLatencyCallback
 
 from collections.abc import Iterator
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
-
 parser = StrOutputParser()
-
-def add_timer(original_chain, chain_name: str):
-    def timed(chain_input):
-        start = perf_counter()
-        result = original_chain.invoke(chain_input)
-        elapsed = perf_counter() - start
-        logger.info("%s: %.3fs", chain_name + ' chain', elapsed)
-        return result
-    return RunnableLambda(timed)
 
 def format_chunks(chunks: list[Document]) -> str:
     blocks = []
@@ -51,8 +39,6 @@ retrieval_chain = RunnablePassthrough.assign(
                     retrieved_chunks = lambda x: retrieval.retriever.invoke(x['question'])
                                         )
 
-timed_retrieval_chain = add_timer(retrieval_chain, 'Retrieval + reranking')
-
 context_dict = {
                     'question': lambda d: d['question'],
                     'context': lambda d: format_chunks(d['retrieved_chunks'])
@@ -60,17 +46,15 @@ context_dict = {
 
 generation_chain = rag_prompt | llm | parser
 
-timed_generation_chain = add_timer(generation_chain, 'LLM generation')
-
 answer_chain = RunnablePassthrough.assign(
-                    answer = context_dict | timed_generation_chain
+                    answer = context_dict | generation_chain
                                         )
 
 final_output_chain = RunnableLambda(
                         lambda d: {'answer': d['answer'], 'sources': d['retrieved_chunks']}
 )
 
-single_turn_chain = timed_retrieval_chain | answer_chain | final_output_chain
+single_turn_chain = retrieval_chain | answer_chain | final_output_chain
 
 
 ### MULTI-TURN CHAIN ###
@@ -92,8 +76,6 @@ def to_messages(chat_history: list[dict]) -> list:
 
 condense_chain = condenser_prompt | condenser_llm | parser
 
-timed_condense_chain = add_timer(condense_chain, 'Condenser')
-
 def standalone_question(query: dict) -> str:
     history = query.get('chat_history')
 
@@ -102,7 +84,7 @@ def standalone_question(query: dict) -> str:
     
     history = history[-6:]
     
-    rewritten =  timed_condense_chain.invoke({
+    rewritten =  condense_chain.invoke({
             'question': query['question'],
             'chat_history': to_messages(history)
                                 }).strip()
@@ -116,47 +98,93 @@ standalone_chain = RunnablePassthrough.assign(
 rag_chain_final = standalone_chain | single_turn_chain
 
 
-def answer_question(question: str, chat_history: list[dict] | None = None) -> dict:
+def answer_question(question: str, chat_history: list[dict] | None = None, session_id: str | None = None) -> dict:
     if retrieval.retriever is None:
         return {'answer': 'No documents have been ingested yet!',
                 'sources': []
                 }
     
-    return rag_chain_final.invoke({
-                                'question': question,
-                                'chat_history': chat_history or []
-    })
+    client = get_client()
+    trace_id = client.create_trace_id()
+    handler = get_langfuse_handler(trace_id = trace_id)
+
+    lf_meta = {
+                'langfuse_trace_name': 'non-stream-request',
+                'langfuse_user_id': 'yashaur',
+                'langfuse_tags': ['live', 'stream:off'],
+            }
+    if session_id:
+        lf_meta['langfuse_session_id'] = session_id
+
+    standalone_chain_output = standalone_chain.invoke({
+                                                    'question': question,
+                                                    'chat_history': chat_history or []
+                                                    },
+                                                    config = {'callbacks': [handler, OllamaLatencyCallback(label = 'condense', trace_id = trace_id)],
+                                                              'metadata': lf_meta,
+                                                              'run_name': 'condense'}
+                                                        )
+
+    final_output = single_turn_chain.invoke(
+                        standalone_chain_output,
+                        config = {'callbacks': [handler, OllamaLatencyCallback(label = 'answer', trace_id = trace_id)],
+                                  'metadata': lf_meta,
+                                  'run_name': 'answer'}
+                        )
+
+    return final_output
 
 
 ### STREAMING CHAIN ###
 
 stream_generation_chain = llm | parser
 
-def stream_answer_question(question: str, chat_history: list[dict] | None = None) -> tuple[list[Document], Iterator[str]]:
+def stream_answer_question(question: str, chat_history: list[dict] | None = None, session_id: str | None = None) -> Iterator:
 
     if retrieval.retriever is None:
-        return (
-                [], # empty sources list for the API because nothing was ingested
-                iter(['No documents have been ingested yet!']) # Trying to keep the return object of this function consistent as a tuple of list of sources and an iterator
-        )
+        yield {'type': 'sources', 'sources': []} # empty sources list for the API because nothing was ingested
+        yield {'type': 'token', 'token': 'No documents have been ingested yet!'} # Trying to keep the return object of this function consistent as a tuple of list of sources and an iterator
+        return
+    
+    client = get_client()
+    trace_id = client.create_trace_id()
+    handler = get_langfuse_handler(trace_id = trace_id)
 
-    condense_retrieval_chain = standalone_chain | timed_retrieval_chain
+    lf_meta = {
+                'langfuse_trace_name': 'stream-request',
+                'langfuse_user_id': 'yashaur',
+                'langfuse_tags': ['live', 'stream:on'],
+            }
+    if session_id:
+        lf_meta['langfuse_session_id'] = session_id
+
+    condense_retrieval_chain = standalone_chain | retrieval_chain
 
     retrieval_dict = condense_retrieval_chain.invoke({
                                                 'question': question,
                                                 'chat_history': chat_history or []
-                                                    })
-    
+                                                    },
+                                                config = {'callbacks': [handler, OllamaLatencyCallback(label = 'condense', trace_id = trace_id)],
+                                                          'metadata': lf_meta,
+                                                          'run_name': 'condense'}
+                                                )
+
     sources = retrieval_dict['retrieved_chunks']
+
+    yield {'type': 'sources', 'sources': sources}
 
     prompt_chain = context_dict | rag_prompt
 
     prompt = prompt_chain.invoke(retrieval_dict)
 
-    print("Chat history so far:\n", chat_history)
-    print("Prompt being sent to LLM:\n", prompt)
+    stream_gen_chain = stream_generation_chain.stream(
+                                        prompt,
+                                        config = {'callbacks': [handler, OllamaLatencyCallback(label = 'answer', trace_id = trace_id)],
+                                                  'metadata': lf_meta,
+                                                  'run_name': 'answer'})
 
-    return sources, stream_generation_chain.stream(prompt)
+    for chunk in stream_gen_chain:
+        yield {'type': 'token', 'token': chunk}
 
 
 if __name__ == '__main__':

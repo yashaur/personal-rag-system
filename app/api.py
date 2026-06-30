@@ -50,13 +50,14 @@ def ingest(file: UploadFile = File(...)):
 def query(query_request: QueryRequest = Body(...)):
     question = query_request.question
     mode = query_request.mode
+    session_id = query_request.session_id
 
     if mode == 'multi':
         chat_history = [m.model_dump() for m in query_request.chat_history]
     else:
         chat_history = None
 
-    response = answer_question(question = question, chat_history = chat_history)
+    response = answer_question(question = question, chat_history = chat_history, session_id = session_id)
 
     sources = [SourceDocument(
                             content = doc.page_content,
@@ -78,35 +79,35 @@ def retrieve_docs():
 def query_stream(query_request: QueryRequest = Body(...)):
     question = query_request.question
     mode = query_request.mode
+    session_id = query_request.session_id
+
 
     if mode == 'multi':
         chat_history = [m.model_dump() for m in query_request.chat_history]
     else:
         chat_history = None
-
-    sources_doc, token_iterator = stream_answer_question(question = question, chat_history = chat_history)
-
-    sources = [        dict(
-                            content = doc.page_content,
-                            source = doc.metadata['source'],
-                            page_number = doc.metadata.get('page_number')
-                            )
-                for doc in sources_doc
-                ]
     
     def token_generator():
 
-        header = json.dumps({'type': 'sources', 'sources': sources}) + '\n'
+        for frame in stream_answer_question(
+                                        question = question,
+                                        chat_history = chat_history,
+                                        session_id = session_id):
+            
+            if frame['type'] == 'sources':
+                sources = frame['sources']
+                sources_list = [dict(
+                                    content = d.page_content,
+                                    source = d.metadata['source'],
+                                    page_number = d.metadata.get('page_number'))
+                                for d in sources    
+                                ]
+                yield json.dumps({'type': 'sources', 'sources': sources_list}) + '\n'
 
-        footer = json.dumps({'type': 'done'}) + '\n'
+            else:
+                yield json.dumps({'type': 'token', 'token': frame['token']}) + '\n'
 
-        yield header
-
-        for token in token_iterator:
-            token_str = json.dumps({'type': 'token', 'token': token}) + '\n'
-            yield token_str
-        
-        yield footer
+        yield json.dumps({'type': 'done'}) + '\n'
 
     return StreamingResponse(token_generator(), media_type = 'application/x-ndjson')
 
@@ -138,3 +139,7 @@ def delete_all():
                             chunk_count = chunks_deleted,
                             filename_or_all = 'ALL'
                          )
+
+
+if __name__ == '__main__':
+    pass

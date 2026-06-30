@@ -9,6 +9,7 @@ class ChatMessage(BaseModel):
 class QueryRequest(BaseModel):
     question: str = Field(..., description = 'The query asked by the user')
     chat_history: List[ChatMessage] = Field(default = [], description = 'The chat history between the user and assistant so far')
+    session_id: str | None = Field(default = None, description = 'The session ID used for tracing')
     mode: Literal['single', 'multi'] = Field(default = 'single', description = 'The mode of conversation: can either be single (just one question asked and the chat ends) or multi-turn (user asks multiple questions in sequence)')
 
 class SourceDocument(BaseModel):

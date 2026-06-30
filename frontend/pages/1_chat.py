@@ -4,6 +4,8 @@ import httpx
 import api_client
 import json
 
+from uuid import uuid4
+
 st.set_page_config(page_title="Chat", page_icon="💬")
 
 st.title("💬 Chat")
@@ -18,10 +20,18 @@ multi_turn = st.sidebar.toggle(
 
 mode = "multi" if multi_turn else "single"
 
+if mode == 'multi':
+    if not st.session_state.get('session_id'):
+        st.session_state['session_id'] = str(uuid4())
+else:
+    st.session_state['session_id'] = None
+
+session_id = st.session_state['session_id']
+
 stream_answer = st.sidebar.toggle(
     "Stream LLM response",
     value = True,
-    help = "When turned on, the interface streams each work(token) as it is produced instead of "
+    help = "When turned on, the interface streams each word (token) as it is produced instead of "
            "outputting the entire answer at once."
 )
 
@@ -29,6 +39,7 @@ stream_mode = "stream" if stream_answer else "once"
 
 if st.sidebar.button("Clear conversation"):
     st.session_state.messages = []
+    del st.session_state['session_id']
     st.rerun()
 
 # --- Conversation state -----------------------------------------------------
@@ -72,7 +83,7 @@ if prompt := st.chat_input("Ask a question about your documents"):
         try:    
             if stream_mode == 'stream':
                 with st.spinner('Thinking...'):
-                    token_generator = api_client.query_stream(prompt, history, mode)
+                    token_generator = api_client.query_stream(prompt, history, mode, session_id)
                     sources = next(token_generator)['sources']
 
                 token_adaptor = (frame['token'] for frame in token_generator if frame['type'] == 'token')
@@ -82,7 +93,7 @@ if prompt := st.chat_input("Ask a question about your documents"):
 
             else:
                 with st.spinner('Thinking...'):
-                    response = api_client.query(prompt, history, mode)
+                    response = api_client.query(prompt, history, mode, session_id)
                     answer = response["answer"]
                     sources = response.get("sources", [])
                     st.markdown(answer)

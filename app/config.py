@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # --- Local data directories ---
     uploads_dir: str = str(PROJECT_ROOT / 'data' / 'uploads')
 
+    # --- Langfuse environment variables ---
+    langfuse_secret_key: str
+    langfuse_public_key: str
+    langfuse_base_url: str = "http://localhost:3000"
+
 
 # Import this singleton everywhere settings are needed.
 settings = Settings()
@@ -46,3 +51,4 @@ settings = Settings()
 if __name__ == '__main__':
     print(f'Ollama LLM: {settings.ollama_llm_model}')
     print(f'Chroma directory: {settings.chroma_dir}')
+    # print(f'Langfuse variables:\n{settings.langfuse_secret_key}\n{settings.langfuse_public_key}\n{settings.langfuse_base_url}')
