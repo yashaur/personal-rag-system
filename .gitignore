@@ -14,3 +14,10 @@ data/
 *.pyc
 /guides
 data/chroma/chroma.sqlite3
+data/.DS_Store
+data/uploads/test.csv
+data/uploads/test.txt
+INTERVIEW_REVIEW.md
+README.md
+CV_PROJECT_SUMMARY.md
+data/.DS_Store
